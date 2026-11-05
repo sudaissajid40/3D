@@ -1710,6 +1710,26 @@ html_content = r'''<!DOCTYPE html>
   </div>
 
   <script>
+    // Canvas roundRect Polyfill for mobile browsers
+    if (typeof CanvasRenderingContext2D !== "undefined" && !CanvasRenderingContext2D.prototype.roundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+        if (!r) r = 0;
+        const radius = typeof r === "number" ? { tl: r, tr: r, br: r, bl: r } : r;
+        this.beginPath();
+        this.moveTo(x + (radius.tl || 0), y);
+        this.lineTo(x + w - (radius.tr || 0), y);
+        this.quadraticCurveTo(x + w, y, x + w, y + (radius.tr || 0));
+        this.lineTo(x + w, y + h - (radius.br || 0));
+        this.quadraticCurveTo(x + w, y + h, x + w - (radius.br || 0), y + h);
+        this.lineTo(x + (radius.bl || 0), y + h);
+        this.quadraticCurveTo(x, y + h, x, y + h - (radius.bl || 0));
+        this.lineTo(x, y + (radius.tl || 0));
+        this.quadraticCurveTo(x, y, x + (radius.tl || 0), y);
+        this.closePath();
+        return this;
+      };
+    }
+
     // --- 1. PROCEDURAL TEXTURES (REALISTIC PBR GRAPHICS) ---
     function createPolishedFloorTexture() {
       const canvas = document.createElement("canvas");
@@ -2395,8 +2415,9 @@ html_content = r'''<!DOCTYPE html>
       const dirLight = new THREE.DirectionalLight(0xfffaed, 0.95);
       dirLight.position.set(35, 55, -25);
       dirLight.castShadow = true;
-      dirLight.shadow.mapSize.width = 4096;
-      dirLight.shadow.mapSize.height = 4096;
+      const isMobileDev = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth <= 768;
+      dirLight.shadow.mapSize.width = isMobileDev ? 1024 : 4096;
+      dirLight.shadow.mapSize.height = isMobileDev ? 1024 : 4096;
       dirLight.shadow.camera.near = 5;
       dirLight.shadow.camera.far = 160;
       const d = 48;
@@ -4099,17 +4120,21 @@ html_content = r'''<!DOCTYPE html>
           </button>
         `;
 
-        // Clicking the button (or clicking the card) draws the route line from character to destination
+        // Clicking the button or tapping the card draws the route line
         const routeBtn = card.querySelector("[data-select-room]");
-        routeBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
+        const chooseRoom = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
           setRouteToDestination(room);
-        });
+        };
+
+        routeBtn.addEventListener("click", chooseRoom);
+        routeBtn.addEventListener("touchend", chooseRoom);
 
         card.style.cursor = "pointer";
-        card.addEventListener("click", () => {
-          setRouteToDestination(room);
-        });
+        card.addEventListener("click", chooseRoom);
 
         grid.appendChild(card);
       });
@@ -4119,11 +4144,16 @@ html_content = r'''<!DOCTYPE html>
       populateDirectoryGrid();
       const backdrop = document.getElementById("dir-modal-backdrop");
       backdrop.classList.add("open");
-      document.getElementById("dir-search-input").focus();
+      const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      if (!isMobile) {
+        document.getElementById("dir-search-input").focus();
+      }
     }
 
     function closeDirectoryModal() {
-      document.getElementById("dir-modal-backdrop").classList.remove("open");
+      const backdrop = document.getElementById("dir-modal-backdrop");
+      backdrop.classList.remove("open");
+      document.getElementById("dir-search-input").blur();
     }
 
     // --- 18. EVENTS & UI ---
@@ -4350,16 +4380,29 @@ html_content = r'''<!DOCTYPE html>
       // DIRECTORY & SEARCH MODAL LISTENERS
       document.getElementById("btn-open-directory").addEventListener("click", openDirectoryModal);
       document.getElementById("close-dir-modal").addEventListener("click", closeDirectoryModal);
+      document.getElementById("dir-modal-backdrop").addEventListener("click", (e) => {
+        if (e.target.id === "dir-modal-backdrop") {
+          closeDirectoryModal();
+        }
+      });
 
       // ROUTE FOLLOWER "HOLD TO FOLLOW LINE" CONTROLLER
       const holdBtn = document.getElementById("btn-hold-follow");
-      const startHold = (e) => { e.preventDefault(); sound.init(); isHoldingFollow = true; };
-      const stopHold = (e) => { e.preventDefault(); isHoldingFollow = false; };
+      const startHold = (e) => { 
+        if (e.cancelable && e.type !== "mousedown") e.preventDefault(); 
+        sound.init(); 
+        isHoldingFollow = true; 
+      };
+      const stopHold = () => { 
+        isHoldingFollow = false; 
+      };
 
       holdBtn.addEventListener("mousedown", startHold);
       window.addEventListener("mouseup", stopHold);
-      holdBtn.addEventListener("touchstart", startHold);
-      window.addEventListener("touchend", stopHold);
+      holdBtn.addEventListener("touchstart", startHold, { passive: false });
+      holdBtn.addEventListener("touchend", stopHold);
+      holdBtn.addEventListener("touchcancel", stopHold);
+      window.addEventListener("blur", stopHold);
 
       document.getElementById("btn-clear-route").addEventListener("click", clearActiveRoute);
 
