@@ -1542,8 +1542,8 @@ html_content = r'''<!DOCTYPE html>
       <button class="btn-action" id="btn-view-toggle">
         <span>👁️</span> 3rd Person
       </button>
-      <button class="btn-action active" id="btn-labels-toggle">
-        <span>🏷️</span> Wall Labels: ON
+      <button class="btn-action" id="btn-labels-toggle">
+        <span>🏷️</span> Wall Labels: OFF
       </button>
       <button class="btn-action" id="btn-sound-toggle">
         <span>🔊</span> Sound: On
@@ -1617,8 +1617,8 @@ html_content = r'''<!DOCTYPE html>
     <div class="dock-panel">
       <h3>Wall Labels & Visuals</h3>
       <div class="pill-group">
-        <button class="pill-btn active" id="btn-dock-labels">
-          <span class="pill-icon">🏷️</span> Colored Wall Signs: On
+        <button class="pill-btn" id="btn-dock-labels">
+          <span class="pill-icon">🏷️</span> Colored Wall Signs: Off
         </button>
         <button class="pill-btn" id="btn-dock-cam-dist">
           <span class="pill-icon">🎥</span> Cam Distance: Medium
@@ -1988,7 +1988,7 @@ html_content = r'''<!DOCTYPE html>
     let currentRoomId = "114";
     let elevatorMoving = false;
     let viewFilter = "active"; // "active", "both", "f1", "f2"
-    let labelsVisible = true;
+    let labelsVisible = false;
     let camDistanceSetting = 3.6; // 3.6m default distance (customizable)
 
     const keys = { w: false, a: false, s: false, d: false, shift: false };
@@ -4262,10 +4262,18 @@ html_content = r'''<!DOCTYPE html>
       labelsVisible = !labelsVisible;
       labelsGroup.visible = labelsVisible;
       const txt = labelsVisible ? "ON" : "OFF";
-      document.getElementById("btn-labels-toggle").innerHTML = `<span>🏷️</span> Wall Labels: ${txt}`;
-      document.getElementById("btn-labels-toggle").classList.toggle("active", labelsVisible);
-      document.getElementById("btn-dock-labels").innerHTML = `<span class="pill-icon">🏷️</span> Colored Wall Signs: ${txt}`;
-      document.getElementById("btn-dock-labels").classList.toggle("active", labelsVisible);
+      const btn1 = document.getElementById("btn-labels-toggle");
+      if (btn1) {
+        btn1.innerHTML = `<span>🏷️</span> Wall Labels: ${txt}`;
+        btn1.classList.toggle("active", labelsVisible);
+      }
+      const btn2 = document.getElementById("btn-dock-labels");
+      if (btn2) {
+        btn2.innerHTML = `<span class="pill-icon">🏷️</span> Colored Wall Signs: ${txt}`;
+        btn2.classList.toggle("active", labelsVisible);
+      }
+      const mBtn = document.getElementById("m-btn-labels");
+      if (mBtn) mBtn.classList.toggle("active", labelsVisible);
     }
 
     function handleInteractionKey() {
